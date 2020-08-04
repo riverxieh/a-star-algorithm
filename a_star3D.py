@@ -3,9 +3,18 @@ import sys
 import time
 import numpy as np
 from matplotlib.patches import Rectangle
-import point
+import point3D
 
-class AStar:
+
+def euclidean_dis3d(p1, p2):
+    vecp = []
+    vecp.append[p1.x - p2.x]
+    vecp.append[p1.y - p2.y]
+    vecp.append[p1.z - p2.z]
+    return np.sqrt(np.sum(np.square(vecp)))
+
+
+class AStar3:
     def __init__(self, image, start_p, end_p, mask=None, displayflag=False):
         self.img = image
         self.msk = mask
@@ -15,24 +24,21 @@ class AStar:
         self.close_set = []
         self.dispflag = displayflag     #display flag
 
+
     def BaseCost(self, p):
-        x_dis = abs(p.x - self.p_start.x)
-        y_dis = abs(p.y - self.p_start.y)
         # Distance to start point
-        distance_cost = x_dis + y_dis + (np.sqrt(2) - 2) * min(x_dis, y_dis)
+        distance_cost = euclidean_dis3d(self.p_start, p)
         # Energy to start point
         p_temp = p
         energy_cost = 0
         while p_temp.parent is not None:
-            energy_cost = energy_cost + self.img[p_temp.x, p_temp.y]
+            energy_cost = energy_cost + self.img[p_temp.x, p_temp.y, p_temp.z]
             p_temp = p_temp.parent
         return energy_cost + distance_cost
 
     def HeuristicCost(self, p):
-        x_dis = abs(p.x - self.p_end.x)
-        y_dis = abs(p.y - self.p_end.y)
         # <=Min Distance to end point
-        distance_cost = x_dis + y_dis + (np.sqrt(2) - 2) * min(x_dis, y_dis)
+        distance_cost = euclidean_dis3d(self.p_end, p)
         # <=Min Energy to end point
         energy_cost = distance_cost * 1
         return energy_cost + distance_cost
@@ -40,25 +46,25 @@ class AStar:
     def TotalCost(self, p):
         return self.BaseCost(p) + self.HeuristicCost(p)
 
-    def IsObstacle(self, x, y):
+    def IsObstacle(self, x, y, z):
         if self.msk is None:
             return False
         else:
-            if self.msk[x, y] == 0:
+            if self.msk[x, y, z] == 0:
                 return True
 
-    def IsValidPoint(self, x, y):
+    def IsValidPoint(self, x, y, z):
         if self.msk is None:
             return False
-        if x < 0 or y < 0:
+        if x < 0 or y < 0 or z < 0:
             return False
-        if x >= self.msk.shape[0] or y >= self.msk.shape[1]:
+        if x >= self.msk.shape[0] or y >= self.msk.shape[1] or z >= self.msk.shape[2]:
             return False
-        return not self.IsObstacle(x, y)
+        return not self.IsObstacle(x, y, z)
 
     def IsInPointList(self, p, point_list):
         for point in point_list:
-            if point.x == p.x and point.y == p.y:
+            if point.x == p.x and point.y == p.y and point.z == p.z:
                 return True
         return False
 
@@ -69,22 +75,22 @@ class AStar:
         return self.IsInPointList(p, self.close_set)
 
     def IsStartPoint(self, p):
-        return p.x == self.p_start.x and p.y == self.p_start.y
+        return p.x == self.p_start.x and p.y == self.p_start.y and p.z == self.p_start.z
 
     def IsEndPoint(self, p):
-        return p.x == self.p_end.x and p.y == self.p_end.y
+        return p.x == self.p_end.x and p.y == self.p_end.y and p.z == self.p_end.z
 
     def SaveImage(self, plt):
         millis = int(round(time.time() * 1000))
         filename = './' + str(millis) + '.png'
         plt.savefig(filename)
 
-    def ProcessPoint(self, x, y, parent):
-        if not self.IsValidPoint(x, y):
-            return # Do nothing for invalid point
-        p = point.Point(x, y)
+    def ProcessPoint3D(self, x, y, z, parent):
+        if not self.IsValidPoint(x, y, z):
+            return  # Do nothing for invalid point
+        p = point3D.Point3D(x, y, z)
         if self.IsInCloseList(p):
-            return # Do nothing for visited point
+            return  # Do nothing for visited point
         # print('Process Point [', p.x, ',', p.y, ']', ', cost: ', p.cost)
         if not self.IsInOpenList(p):
             p.parent = parent
@@ -135,7 +141,7 @@ class AStar:
             p = self.open_set[index]
             rec = Rectangle((p.x, p.y), 1, 1, color='c')
             ax.add_patch(rec)
-            print('SelectPoint [', p.x, ',', p.y, ']', ', cost: ', p.cost)
+            print('SelectPoint [', p.x, ',', p.y, ', ', p.z, ']', ', cost: ', p.cost)
             # self.SaveImage(plt)
 
             if self.IsEndPoint(p):
@@ -147,8 +153,8 @@ class AStar:
             # Process all neighbors
             x = p.x
             y = p.y
-            self.ProcessPoint(x-1, y+1, p)
-            self.ProcessPoint(x-1, y, p)
+            self.ProcessPoint3D(x-1, y+1, z, p)
+            self.ProcessPoint3D(x-1, y, p)
             self.ProcessPoint(x-1, y-1, p)
             self.ProcessPoint(x, y-1, p)
             self.ProcessPoint(x+1, y-1, p)
